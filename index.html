@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Trading Targets</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+            to { box-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+ </head>
+ <body class="h-full bg-gray-900 text-white font-sans">
+  <div class="min-h-full p-6">
+   <header class="text-center mb-8">
+    <h1 id="app-title" class="text-4xl font-bold text-green-400 mb-2">Smart Trading Targets</h1>
+    <p class="text-gray-400">Adaptive daily goals that learn from your performance</p>
+   </header><!-- Toggle Buttons -->
+   <div class="max-w-md mx-auto mb-8 text-center space-x-3"><button id="setup-toggle" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors border border-gray-600"> M.S </button> <button id="expense-toggle" class="bg-orange-700 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors border border-orange-600"> A.E </button>
+   </div><!-- Setup Section -->
+   <div id="setup-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-green-400">Monthly Setup</h2>
+    <div class="space-y-4">
+     <div><label for="monthly-goal" class="block text-sm font-medium mb-2">Monthly Trading Goal</label> <input type="number" id="monthly-goal" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="5000">
+     </div>
+     <div><label for="monthly-expenses" class="block text-sm font-medium mb-2">Monthly Expenses</label> <input type="number" id="monthly-expenses" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="2000">
+     </div>
+     <div><label for="working-days" class="block text-sm font-medium mb-2">Working Days per Month</label> <input type="number" id="working-days" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="22" min="1" max="31">
+      <p class="text-xs text-gray-400 mt-1">Only count days you actively trade (excludes weekends, holidays, etc.)</p>
+     </div><button id="update-setup" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Update Goals </button>
+    </div>
+   </div><!-- Tab Navigation -->
+   <div id="tab-navigation" class="max-w-2xl mx-auto mb-8" style="display: none;">
+    <div class="flex bg-gray-800 rounded-lg p-1 border border-gray-700"><button id="home-tab" class="flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors"> Home </button> <button id="analytics-tab" class="flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors"> Analytics </button>
+    </div>
+   </div><!-- Home Tab Content -->
+   <div id="home-content"></div><!-- Analytics Tab Content -->
+   <div id="analytics-content" class="max-w-4xl mx-auto mb-8" style="display: none;">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><!-- Monthly Goal Progress -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-green-400 mb-4">Monthly Goal Progress</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Base Goal:</span> <span id="monthly-goal-display" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Total Target:</span> <span id="monthly-target-display" class="font-semibold text-yellow-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Achieved:</span> <span id="monthly-achieved-display" class="font-semibold text-green-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Remaining:</span> <span id="monthly-remaining-display" class="font-semibold">0</span>
+       </div>
+       <div class="w-full bg-gray-700 rounded-full h-3 mt-4">
+        <div id="progress-bar" class="bg-green-400 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+       </div>
+       <div class="text-center"><span id="progress-percentage" class="text-sm text-gray-400">0% Complete</span>
+       </div>
+      </div>
+     </div><!-- Working Days Progress -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-blue-400 mb-4">Working Days</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Total Days:</span> <span id="total-working-days" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Days Left:</span> <span id="days-remaining" class="font-semibold">0</span>
+       </div>
+       <div class="w-full bg-gray-700 rounded-full h-3 mt-4">
+        <div id="days-progress-bar" class="bg-blue-400 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+       </div>
+      </div><!-- Monthly Calendar -->
+      <div class="mt-6">
+       <div class="flex justify-between items-center mb-3">
+        <h4 id="calendar-month" class="text-sm font-semibold text-blue-300"></h4>
+       </div>
+       <div class="grid grid-cols-7 gap-1 text-xs"><!-- Day headers -->
+        <div class="text-center text-gray-500 font-medium py-1">
+         S
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         M
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         T
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         W
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         T
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         F
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         S
+        </div><!-- Calendar days will be populated by JavaScript -->
+        <div id="calendar-days" class="col-span-7 grid grid-cols-7 gap-1"></div>
+       </div>
+      </div>
+     </div><!-- Expense Impact -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-orange-400 mb-4">Expense Impact</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Base Expenses:</span> <span id="base-expenses-display" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Added Expenses:</span> <span id="added-expenses-display" class="font-semibold text-orange-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">3x Multiplier:</span> <span id="expense-multiplier-display" class="font-semibold text-red-400">0</span>
+       </div>
+       <div class="text-xs text-gray-500 mt-2">
+        Total target increase: <span id="total-expense-impact" class="text-orange-400 font-semibold">0</span>
+       </div>
+      </div>
+     </div><!-- Rollover Impact -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-red-400 mb-4">Rollover Penalty</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Previous Shortfalls:</span> <span id="rollover-shortfall-display" class="font-semibold text-red-300">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">2x Penalty:</span> <span id="rollover-penalty-display" class="font-semibold text-red-400">0</span>
+       </div>
+       <div class="text-xs text-gray-500 mt-2">
+        💡 Missed targets from previous months are added at 2x to current month
+       </div>
+      </div>
+     </div>
+    </div><!-- Performance History -->
+    <div class="max-w-2xl mx-auto">
+     <h2 class="text-xl font-semibold mb-4 text-green-400">Recent Performance</h2>
+     <div id="performance-list" class="space-y-3">
+      <div class="text-center text-gray-500 py-8">
+       No performance data yet. Log your first result to see history.
+      </div>
+     </div>
+    </div>
+   </div><!-- Today's Target -->
+   <div class="max-w-md mx-auto mb-8">
+    <div id="target-card" class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-8 border border-gray-700 text-center glow">
+     <h2 class="text-lg text-gray-400 mb-2">Today's Target</h2>
+     <div id="daily-target" class="text-5xl font-bold text-green-400 mb-4">
+      0
+     </div>
+     <div id="target-info" class="text-sm text-gray-500">
+      Set your monthly goals to get started
+     </div>
+    </div>
+   </div><!-- Performance Entry -->
+   <div id="entry-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-green-400">Log Today's Performance</h2>
+    <div class="space-y-4">
+     <div><label for="actual-result" class="block text-sm font-medium mb-2">Actual Result</label> <input type="number" id="actual-result" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="0">
+     </div><button id="log-performance" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Log Performance </button>
+    </div>
+   </div><!-- Add Expense Section -->
+   <div id="expense-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-orange-400">Add Expense</h2>
+    <div class="space-y-4">
+     <div><label for="expense-amount" class="block text-sm font-medium mb-2">Expense Amount</label> <input type="number" id="expense-amount" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="0">
+     </div>
+     <div><label for="expense-description" class="block text-sm font-medium mb-2">Description (Optional)</label> <input type="text" id="expense-description" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="e.g., Office supplies, Software subscription">
+     </div>
+     <div class="bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg p-3">
+      <p class="text-sm text-orange-300">💡 <strong>Smart Adjustment:</strong> Adding this expense will increase your daily target by <span id="expense-multiplier">3x</span> the amount to ensure you earn enough to cover it.</p>
+     </div><button id="add-expense" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Add Expense </button>
+    </div>
+   </div><!-- Loading indicator -->
+   <div id="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style="display: none;">
+    <div class="bg-gray-800 rounded-lg p-6 text-center">
+     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto mb-4"></div>
+     <p class="text-white">Processing...</p>
+    </div>
+   </div><!-- Designer Credit -->
+   <footer class="text-center py-6 mt-8 border-t border-gray-700">
+    <p class="text-gray-400 text-sm">Designed by <span class="text-green-400 font-semibold">JAISAL BHATIA</span></p>
+   </footer>
+  </div>
+  <script>
+        let currentData = [];
+        let currentTarget = 0;
+        let monthlyGoal = 0;
+        let monthlyExpenses = 0;
+        let workingDays = 22;
+
+        const defaultConfig = {
+            app_title: "Smart Trading Targets"
+        };
+
+        // Data SDK Handler
+        const dataHandler = {
+            onDataChanged(data) {
+                currentData = data;
+                updateUI();
+            }
+        };
+
+        // Element SDK Configuration
+        const capabilities = {
+            recolorables: [
+                {
+                    get: () => window.elementSdk?.config?.background_color || defaultConfig.background_color || "#111827",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ background_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.surface_color || defaultConfig.surface_color || "#1f2937",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ surface_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.text_color || defaultConfig.text_color || "#ffffff",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ text_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.accent_color || defaultConfig.accent_color || "#22c55e",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ accent_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.secondary_color || defaultConfig.secondary_color || "#3b82f6",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ secondary_color: value });
+                        }
+                    }
+                }
+            ],
+            borderables: [],
+            fontEditable: {
+                get: () => window.elementSdk?.config?.font_family || defaultConfig.font_family || "sans-serif",
+                set: (value) => {
+                    if (window.elementSdk) {
+                        window.elementSdk.setConfig({ font_family: value });
+                    }
+                }
+            },
+            fontSizeable: {
+                get: () => window.elementSdk?.config?.font_size || defaultConfig.font_size || 16,
+                set: (value) => {
+                    if (window.elementSdk) {
+                        window.elementSdk.setConfig({ font_size: value });
+                    }
+                }
+            }
+        };
+
+        async function onConfigChange(config) {
+            const backgroundColor = config.background_color || defaultConfig.background_color || "#111827";
+            const surfaceColor = config.surface_color || defaultConfig.surface_color || "#1f2937";
+            const textColor = config.text_color || defaultConfig.text_color || "#ffffff";
+            const accentColor = config.accent_color || defaultConfig.accent_color || "#22c55e";
+            const secondaryColor = config.secondary_color || defaultConfig.secondary_color || "#3b82f6";
+            const fontFamily = config.font_family || defaultConfig.font_family || "sans-serif";
+            const fontSize = config.font_size || defaultConfig.font_size || 16;
+
+            // Apply colors
+            document.body.style.backgroundColor = backgroundColor;
+            document.body.style.color = textColor;
+            document.body.style.fontFamily = `${fontFamily}, sans-serif`;
+            document.body.style.fontSize = `${fontSize}px`;
+
+            // Update surface colors
+            const surfaces = document.querySelectorAll('.bg-gray-800, .bg-gray-900');
+            surfaces.forEach(el => el.style.backgroundColor = surfaceColor);
+
+            // Update accent colors
+            const accents = document.querySelectorAll('.text-green-400, .border-green-500, .bg-green-600');
+            accents.forEach(el => {
+                if (el.classList.contains('text-green-400')) el.style.color = accentColor;
+                if (el.classList.contains('border-green-500')) el.style.borderColor = accentColor;
+                if (el.classList.contains('bg-green-600')) el.style.backgroundColor = accentColor;
+            });
+
+            // Update secondary colors
+            const secondaries = document.querySelectorAll('.bg-blue-600');
+            secondaries.forEach(el => el.style.backgroundColor = secondaryColor);
+
+            // Update text content
+            document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+            
+            updateTargetDisplay();
+        }
+
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ["app_title", config.app_title || defaultConfig.app_title]
+            ]);
+        }
+
+        function calculateAutoDifficulty(actual, target) {
+            if (target <= 0) return 'moderate';
+            
+            const ratio = actual / target;
+            
+            if (ratio >= 1.5) return 'very-easy';      // 150%+ of target
+            if (ratio >= 1.2) return 'easy';          // 120-149% of target
+            if (ratio >= 0.8) return 'moderate';      // 80-119% of target
+            if (ratio >= 0.5) return 'hard';          // 50-79% of target
+            return 'very-hard';                       // <50% of target
+        }
+
+        function calculateRolloverAmount() {
+            // Calculate rollover from all previous months where targets were missed
+            let totalRollover = 0;
+            const today = new Date();
+            
+            // Get all unique months from the data
+            const monthsWithData = [...new Set(currentData.map(entry => {
+                const date = new Date(entry.date);
+                return `${date.getFullYear()}-${date.getMonth()}`;
+            }))];
+            
+            monthsWithData.forEach(monthKey => {
+                const [year, month] = monthKey.split('-').map(Number);
+                const monthDate = new Date(year, month);
+                
+                // Skip current month and future months
+                if (monthDate >= new Date(today.getFullYear(), today.getMonth())) return;
+                
+                // Get the goal for this month (from the latest setup entry in that month)
+                const monthSetup = currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year &&
+                               entry.monthly_goal > 0;
+                    })
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                
+                if (!monthSetup) return;
+                
+                // Calculate actual progress for that month
+                const monthProgress = currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year;
+                    })
+                    .reduce((sum, entry) => sum + entry.actual, 0);
+                
+                // Calculate total target including expenses for that month
+                const monthlyAdditionalExpenses = currentData
+                    .filter(entry => {
+                        if (!entry.expense_amount) return false;
+                        const entryDate = new Date(entry.expense_date || entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year;
+                    })
+                    .reduce((sum, entry) => sum + entry.expense_amount, 0);
+                
+                const totalMonthTarget = monthSetup.monthly_goal + monthSetup.monthly_expenses + (monthlyAdditionalExpenses * 3);
+                
+                // If target was missed, add 2x the shortfall to rollover
+                if (monthProgress < totalMonthTarget) {
+                    const shortfall = totalMonthTarget - monthProgress;
+                    totalRollover += shortfall * 2;
+                }
+            });
+            
+            return totalRollover;
+        }
+
+        function calculateDailyTarget() {
+            if (monthlyGoal <= 0 || workingDays <= 0) return 0;
+
+            const today = new Date();
+            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const currentDay = today.getDate();
+            const calendarDaysRemaining = daysInMonth - currentDay;
+            
+            // Count actual days worked this month
+            const daysWorked = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual > 0;
+                })
+                .length;
+            
+            // Calculate working days remaining (can't exceed calendar days left)
+            const workingDaysRemaining = Math.min(calendarDaysRemaining, Math.max(0, workingDays - daysWorked));
+
+            if (workingDaysRemaining <= 0) return 0;
+
+            // Calculate progress so far
+            const monthlyProgress = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + entry.actual, 0);
+
+            // Add rollover from previous missed months (2x the shortfall)
+            const rolloverAmount = calculateRolloverAmount();
+            const adjustedMonthlyGoal = monthlyGoal + rolloverAmount;
+
+            // Calculate remaining target
+            const remainingTarget = Math.max(0, adjustedMonthlyGoal - monthlyProgress);
+
+            // Base daily target (spread across remaining working days)
+            let dailyTarget = remainingTarget / workingDaysRemaining;
+
+            // Adjust based on recent performance difficulty (auto-calculated)
+            const recentEntries = currentData
+                .filter(entry => new Date(entry.date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+                .slice(-5);
+
+            if (recentEntries.length > 0) {
+                const avgDifficulty = recentEntries.reduce((sum, entry) => {
+                    const difficultyScore = {
+                        'very-easy': 1,
+                        'easy': 2,
+                        'moderate': 3,
+                        'hard': 4,
+                        'very-hard': 5
+                    }[entry.difficulty] || 3;
+                    return sum + difficultyScore;
+                }, 0) / recentEntries.length;
+
+                // Adjust target based on difficulty
+                if (avgDifficulty < 2.5) {
+                    dailyTarget *= 1.2; // Increase if too easy
+                } else if (avgDifficulty > 3.5) {
+                    dailyTarget *= 0.8; // Decrease if too hard
+                }
+            }
+
+            // Factor in expenses (need to earn more to cover expenses, spread across working days)
+            const dailyExpenses = monthlyExpenses / workingDays;
+            dailyTarget = Math.max(dailyTarget, dailyExpenses * 1.1);
+
+            // Add 3x any additional expenses from this month (spread across working days)
+            const monthlyAdditionalExpenses = currentData
+                .filter(entry => {
+                    if (!entry.expense_amount) return false;
+                    const entryDate = new Date(entry.expense_date || entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + (entry.expense_amount * 3), 0);
+
+            const dailyAdditionalExpenses = monthlyAdditionalExpenses / workingDays;
+            dailyTarget += dailyAdditionalExpenses;
+
+            return Math.round(dailyTarget);
+        }
+
+        function updateTargetDisplay() {
+            document.getElementById('daily-target').textContent = currentTarget.toLocaleString();
+            
+            if (currentTarget > 0) {
+                document.getElementById('target-info').textContent = 'Automatically adjusted based on your performance';
+                document.getElementById('entry-section').style.display = 'block';
+                document.getElementById('tab-navigation').style.display = 'block';
+                updateProgressDashboard();
+            } else {
+                document.getElementById('target-info').textContent = 'Set your monthly goals to get started';
+                document.getElementById('entry-section').style.display = 'none';
+                document.getElementById('tab-navigation').style.display = 'none';
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            const homeTab = document.getElementById('home-tab');
+            const analyticsTab = document.getElementById('analytics-tab');
+            const homeContent = document.getElementById('home-content');
+            const analyticsContent = document.getElementById('analytics-content');
+
+            if (tabName === 'home') {
+                homeTab.className = 'flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors';
+                analyticsTab.className = 'flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors';
+                homeContent.style.display = 'block';
+                analyticsContent.style.display = 'none';
+            } else {
+                homeTab.className = 'flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors';
+                analyticsTab.className = 'flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors';
+                homeContent.style.display = 'none';
+                analyticsContent.style.display = 'block';
+            }
+        }
+
+        function updateCalendar() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            // Set month header
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Get days with performance data
+            const performanceDays = new Set(
+                currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year &&
+                               entry.actual > 0;
+                    })
+                    .map(entry => new Date(entry.date).getDate())
+            );
+            
+            // Build calendar
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+            
+            // Add empty cells for days before month starts
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'h-6';
+                calendarDays.appendChild(emptyDay);
+            }
+            
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.textContent = day;
+                dayElement.className = 'h-6 flex items-center justify-center text-center rounded';
+                
+                // Highlight today
+                if (day === today.getDate()) {
+                    dayElement.className += ' bg-blue-500 text-white font-bold';
+                }
+                // Mark days with performance data
+                else if (performanceDays.has(day)) {
+                    dayElement.className += ' bg-green-600 text-white font-semibold';
+                }
+                // Past days without data
+                else if (day < today.getDate()) {
+                    dayElement.className += ' text-gray-500';
+                }
+                // Future days
+                else {
+                    dayElement.className += ' text-gray-300';
+                }
+                
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        function updateProgressDashboard() {
+            const today = new Date();
+            
+            // Calculate monthly progress
+            const monthlyProgress = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual > 0;
+                })
+                .reduce((sum, entry) => sum + entry.actual, 0);
+
+            const remainingTarget = Math.max(0, monthlyGoal - monthlyProgress);
+            const progressPercentage = monthlyGoal > 0 ? Math.min(100, (monthlyProgress / monthlyGoal) * 100) : 0;
+
+            // Calculate total monthly target (base goal + expenses + 3x additional expenses + rollover)
+            const monthlyAdditionalExpenses = currentData
+                .filter(entry => {
+                    if (!entry.expense_amount) return false;
+                    const entryDate = new Date(entry.expense_date || entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + entry.expense_amount, 0);
+
+            const rolloverAmount = calculateRolloverAmount();
+            const totalMonthlyTarget = monthlyGoal + monthlyExpenses + (monthlyAdditionalExpenses * 3) + rolloverAmount;
+            const totalRemainingTarget = Math.max(0, totalMonthlyTarget - monthlyProgress);
+            const totalProgressPercentage = totalMonthlyTarget > 0 ? Math.min(100, (monthlyProgress / totalMonthlyTarget) * 100) : 0;
+
+            // Update monthly goal progress
+            document.getElementById('monthly-goal-display').textContent = monthlyGoal.toLocaleString();
+            document.getElementById('monthly-target-display').textContent = totalMonthlyTarget.toLocaleString();
+            document.getElementById('monthly-achieved-display').textContent = monthlyProgress.toLocaleString();
+            document.getElementById('monthly-remaining-display').textContent = totalRemainingTarget.toLocaleString();
+            document.getElementById('progress-bar').style.width = `${totalProgressPercentage}%`;
+            document.getElementById('progress-percentage').textContent = `${Math.round(totalProgressPercentage)}% Complete`;
+
+            // Count actual days worked (days with performance entries)
+            const daysWorked = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual > 0;
+                })
+                .length;
+            
+            // Calculate working days remaining (simple subtraction from total working days)
+            const workingDaysRemaining = Math.max(0, workingDays - daysWorked);
+            const workingDaysPassed = workingDays - workingDaysRemaining;
+            const daysProgressPercentage = workingDays > 0 ? (workingDaysPassed / workingDays) * 100 : 0;
+
+            document.getElementById('total-working-days').textContent = workingDays;
+            document.getElementById('days-remaining').textContent = workingDaysRemaining;
+            document.getElementById('days-progress-bar').style.width = `${daysProgressPercentage}%`;
+
+            // Update calendar
+            updateCalendar();
+
+            // Calculate expense impact (reuse the monthlyAdditionalExpenses from above)
+            const expenseMultiplier = monthlyAdditionalExpenses * 3;
+            const totalExpenseImpact = monthlyExpenses + expenseMultiplier;
+
+            document.getElementById('base-expenses-display').textContent = monthlyExpenses.toLocaleString();
+            document.getElementById('added-expenses-display').textContent = monthlyAdditionalExpenses.toLocaleString();
+            document.getElementById('expense-multiplier-display').textContent = expenseMultiplier.toLocaleString();
+            document.getElementById('total-expense-impact').textContent = totalExpenseImpact.toLocaleString();
+
+            // Calculate and display rollover impact
+            const rolloverShortfall = rolloverAmount / 2; // Original shortfall before 2x penalty
+            document.getElementById('rollover-shortfall-display').textContent = rolloverShortfall.toLocaleString();
+            document.getElementById('rollover-penalty-display').textContent = rolloverAmount.toLocaleString();
+        }
+
+        function updateUI() {
+            // Get latest setup from data
+            const latestSetup = currentData
+                .filter(entry => entry.monthly_goal && entry.monthly_expenses)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            if (latestSetup) {
+                monthlyGoal = latestSetup.monthly_goal;
+                monthlyExpenses = latestSetup.monthly_expenses;
+                workingDays = latestSetup.working_days || 22;
+                document.getElementById('monthly-goal').value = monthlyGoal;
+                document.getElementById('monthly-expenses').value = monthlyExpenses;
+                document.getElementById('working-days').value = workingDays;
+            }
+
+            currentTarget = calculateDailyTarget();
+            updateTargetDisplay();
+            updatePerformanceList();
+        }
+
+        function updatePerformanceList() {
+            const container = document.getElementById('performance-list');
+            
+            if (currentData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No performance data yet. Log your first result to see history.</div>';
+                return;
+            }
+
+            const recentEntries = currentData
+                .filter(entry => entry.actual !== undefined || entry.expense_amount !== undefined)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 10);
+
+            container.innerHTML = recentEntries.map(entry => {
+                const date = new Date(entry.date).toLocaleDateString();
+                
+                // Check if this is an expense entry
+                if (entry.expense_amount) {
+                    return `
+                        <div class="bg-gray-800 rounded-lg p-4 border border-orange-600">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-400">${date}</span>
+                                <span class="text-sm text-orange-400">💸 Expense Added</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-lg font-semibold text-orange-400">-${entry.expense_amount.toLocaleString()}</span>
+                                    <span class="text-gray-400"> (3x = +${(entry.expense_amount * 3).toLocaleString()} to targets)</span>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-400 mt-1">${entry.expense_description}</div>
+                        </div>
+                    `;
+                }
+                
+                // Regular performance entry
+                const targetMet = entry.actual >= entry.target;
+                const difficultyColor = {
+                    'very-easy': 'text-green-300',
+                    'easy': 'text-green-400',
+                    'moderate': 'text-yellow-400',
+                    'hard': 'text-orange-400',
+                    'very-hard': 'text-red-400'
+                }[entry.difficulty] || 'text-gray-400';
+
+                return `
+                    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-400">${date}</span>
+                            <span class="text-sm ${targetMet ? 'text-green-400' : 'text-red-400'}">
+                                ${targetMet ? '✓ Target Met' : '✗ Target Missed'}
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-lg font-semibold">${entry.actual.toLocaleString()}</span>
+                                <span class="text-gray-400"> / ${entry.target.toLocaleString()}</span>
+                            </div>
+                            <span class="text-sm ${difficultyColor} capitalize">
+                                ${entry.difficulty.replace('-', ' ')}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Event Listeners
+        document.getElementById('home-tab').addEventListener('click', () => switchTab('home'));
+        document.getElementById('analytics-tab').addEventListener('click', () => switchTab('analytics'));
+
+        document.getElementById('setup-toggle').addEventListener('click', () => {
+            const setupSection = document.getElementById('setup-section');
+            if (setupSection.style.display === 'none') {
+                setupSection.style.display = 'block';
+            } else {
+                setupSection.style.display = 'none';
+            }
+        });
+
+        document.getElementById('expense-toggle').addEventListener('click', () => {
+            const expenseSection = document.getElementById('expense-section');
+            if (expenseSection.style.display === 'none') {
+                expenseSection.style.display = 'block';
+            } else {
+                expenseSection.style.display = 'none';
+            }
+        });
+
+        document.getElementById('update-setup').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const goal = parseFloat(document.getElementById('monthly-goal').value);
+            const expenses = parseFloat(document.getElementById('monthly-expenses').value);
+            const days = parseInt(document.getElementById('working-days').value);
+
+            if (!goal || !expenses || !days || goal <= 0 || expenses < 0 || days <= 0 || days > 31) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Please enter valid monthly goal, expenses, and working days (1-31)';
+                document.getElementById('update-setup').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            if (currentData.length >= 999) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Maximum limit of 999 records reached. Please delete some entries first.';
+                document.getElementById('update-setup').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            showLoading();
+
+            const result = await window.dataSdk.create({
+                date: new Date().toISOString().split('T')[0],
+                target: 0,
+                actual: 0,
+                difficulty: 'moderate',
+                monthly_goal: goal,
+                monthly_expenses: expenses,
+                working_days: days,
+                created_at: new Date().toISOString()
+            });
+
+            hideLoading();
+
+            if (result.isOk) {
+                monthlyGoal = goal;
+                monthlyExpenses = expenses;
+                workingDays = days;
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm text-green-300';
+                feedback.textContent = 'Setup updated successfully!';
+                document.getElementById('update-setup').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+            } else {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Failed to update setup. Please try again.';
+                document.getElementById('update-setup').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+            }
+        });
+
+        document.getElementById('log-performance').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const actual = parseFloat(document.getElementById('actual-result').value);
+
+            if (isNaN(actual)) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Please enter a valid result amount';
+                document.getElementById('log-performance').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            if (currentData.length >= 999) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Maximum limit of 999 records reached. Please delete some entries first.';
+                document.getElementById('log-performance').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            // Auto-calculate difficulty based on performance vs target
+            const difficulty = calculateAutoDifficulty(actual, currentTarget);
+
+            showLoading();
+
+            const result = await window.dataSdk.create({
+                date: new Date().toISOString().split('T')[0],
+                target: currentTarget,
+                actual: actual,
+                difficulty: difficulty,
+                monthly_goal: monthlyGoal,
+                monthly_expenses: monthlyExpenses,
+                working_days: workingDays,
+                created_at: new Date().toISOString()
+            });
+
+            hideLoading();
+
+            if (result.isOk) {
+                document.getElementById('actual-result').value = '';
+                
+                // Show feedback about auto-calculated difficulty
+                const difficultyLabels = {
+                    'very-easy': 'Very Easy (150%+ of target)',
+                    'easy': 'Easy (120-149% of target)',
+                    'moderate': 'Moderate (80-119% of target)',
+                    'hard': 'Hard (50-79% of target)',
+                    'very-hard': 'Very Hard (<50% of target)'
+                };
+                
+                const feedbackMessage = `Performance logged! Difficulty automatically assessed as: ${difficultyLabels[difficulty]}`;
+                
+                // Create temporary feedback message
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm text-green-300';
+                feedback.textContent = feedbackMessage;
+                document.getElementById('entry-section').appendChild(feedback);
+                
+                // Remove feedback after 3 seconds
+                setTimeout(() => {
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 3000);
+            } else {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Failed to log performance. Please try again.';
+                document.getElementById('log-performance').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+            }
+        });
+
+        document.getElementById('add-expense').addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            const expenseAmount = parseFloat(document.getElementById('expense-amount').value);
+            const expenseDescription = document.getElementById('expense-description').value.trim();
+
+            if (isNaN(expenseAmount) || expenseAmount <= 0) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Please enter a valid expense amount';
+                document.getElementById('add-expense').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            if (currentData.length >= 999) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Maximum limit of 999 records reached. Please delete some entries first.';
+                document.getElementById('add-expense').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            showLoading();
+
+            const result = await window.dataSdk.create({
+                date: new Date().toISOString().split('T')[0],
+                target: 0,
+                actual: 0,
+                difficulty: 'moderate',
+                monthly_goal: monthlyGoal,
+                monthly_expenses: monthlyExpenses,
+                working_days: workingDays,
+                expense_amount: expenseAmount,
+                expense_description: expenseDescription || 'Expense',
+                expense_date: new Date().toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            });
+
+            hideLoading();
+
+            if (result.isOk) {
+                document.getElementById('expense-amount').value = '';
+                document.getElementById('expense-description').value = '';
+                
+                // Show confirmation with impact
+                const impact = expenseAmount * 3;
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm text-green-300';
+                feedback.textContent = `Expense added! Your daily targets will now increase by ${impact.toLocaleString()} to cover this expense.`;
+                document.getElementById('add-expense').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+            } else {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Failed to add expense. Please try again.';
+                document.getElementById('add-expense').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+            }
+        });
+
+        // Initialize
+        async function init() {
+            // Initialize Data SDK
+            const dataResult = await window.dataSdk.init(dataHandler);
+            if (!dataResult.isOk) {
+                console.error('Failed to initialize data SDK');
+                return;
+            }
+
+            // Initialize Element SDK
+            if (window.elementSdk) {
+                await window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange,
+                    mapToCapabilities: () => capabilities,
+                    mapToEditPanelValues
+                });
+            }
+        }
+
+        init();
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99f942e6a609f3eb',t:'MTc2MzMxOTk0Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
