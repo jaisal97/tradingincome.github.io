@@ -1,0 +1,1602 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Trading Targets</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+            to { box-shadow: 0 0 30px rgba(34, 197, 94, 0.5); }
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full bg-gray-900 text-white font-sans">
+  <div class="min-h-full p-6">
+   <header class="text-center mb-8">
+    <h1 id="app-title" class="text-4xl font-bold text-green-400 mb-2">Smart Trading Targets</h1>
+    <p class="text-gray-400">Adaptive daily goals that learn from your performance</p>
+   </header><!-- Toggle Buttons -->
+   <div class="max-w-md mx-auto mb-8 text-center space-x-3"><button id="setup-toggle" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors border border-gray-600"> M.S </button> <button id="expense-toggle" class="bg-orange-700 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors border border-orange-600"> A.E </button>
+   </div><!-- Setup Section -->
+   <div id="setup-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-green-400">Monthly Setup</h2>
+    <div class="space-y-4">
+     <div><label for="monthly-goal" class="block text-sm font-medium mb-2">Monthly Trading Goal</label> <input type="number" id="monthly-goal" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="5000">
+     </div>
+     <div><label for="monthly-expenses" class="block text-sm font-medium mb-2">Monthly Expenses</label> <input type="number" id="monthly-expenses" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="2000">
+     </div>
+     <div><label for="working-days" class="block text-sm font-medium mb-2">Working Days per Month</label> <input type="number" id="working-days" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="22" min="1" max="31">
+      <p class="text-xs text-gray-400 mt-1">Only count days you actively trade (excludes weekends, holidays, etc.)</p>
+     </div><button id="update-setup" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Update Goals </button>
+    </div>
+   </div><!-- Tab Navigation -->
+   <div id="tab-navigation" class="max-w-2xl mx-auto mb-8" style="display: none;">
+    <div class="flex bg-gray-800 rounded-lg p-1 border border-gray-700"><button id="home-tab" class="flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors"> Home </button> <button id="analytics-tab" class="flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors"> Analytics </button>
+    </div>
+   </div><!-- Home Tab Content -->
+   <div id="home-content"></div><!-- Analytics Tab Content -->
+   <div id="analytics-content" class="max-w-4xl mx-auto mb-8" style="display: none;"><!-- Daily Target Trend Graph -->
+    <div class="mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
+     <h2 class="text-xl font-semibold mb-4 text-green-400">Daily Target Trend - This Month</h2>
+     <div class="relative">
+      <canvas id="target-trend-chart" width="800" height="300" class="w-full bg-gray-900 rounded-lg"></canvas>
+      <div id="chart-tooltip" class="absolute bg-gray-700 text-white text-xs rounded px-2 py-1 pointer-events-none opacity-0 transition-opacity duration-200 z-10"></div>
+     </div>
+     <div class="mt-4 text-sm text-gray-400">
+      <p>📈 Track how your daily targets adjust based on performance, losses, and expenses</p>
+      <div class="flex flex-wrap gap-4 mt-2">
+       <div class="flex items-center">
+        <div class="w-3 h-3 bg-green-400 rounded mr-2"></div><span>Daily Target</span>
+       </div>
+       <div class="flex items-center">
+        <div class="w-3 h-3 bg-blue-400 rounded mr-2"></div><span>Actual Performance</span>
+       </div>
+       <div class="flex items-center">
+        <div class="w-3 h-3 bg-red-400 rounded mr-2"></div><span>Losses</span>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"><!-- Monthly Goal Progress -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-green-400 mb-4">Monthly Goal Progress</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Base Goal:</span> <span id="monthly-goal-display" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Total Target:</span> <span id="monthly-target-display" class="font-semibold text-yellow-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Achieved:</span> <span id="monthly-achieved-display" class="font-semibold text-green-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Remaining:</span> <span id="monthly-remaining-display" class="font-semibold">0</span>
+       </div>
+       <div class="w-full bg-gray-700 rounded-full h-3 mt-4">
+        <div id="progress-bar" class="bg-green-400 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+       </div>
+       <div class="text-center"><span id="progress-percentage" class="text-sm text-gray-400">0% Complete</span>
+       </div>
+      </div>
+     </div><!-- Working Days Progress -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-blue-400 mb-4">Working Days</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Total Days:</span> <span id="total-working-days" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Days Left:</span> <span id="days-remaining" class="font-semibold">0</span>
+       </div>
+       <div class="w-full bg-gray-700 rounded-full h-3 mt-4">
+        <div id="days-progress-bar" class="bg-blue-400 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+       </div>
+      </div><!-- Monthly Calendar -->
+      <div class="mt-6">
+       <div class="flex justify-between items-center mb-3">
+        <h4 id="calendar-month" class="text-sm font-semibold text-blue-300"></h4>
+       </div>
+       <div class="grid grid-cols-7 gap-1 text-xs"><!-- Day headers -->
+        <div class="text-center text-gray-500 font-medium py-1">
+         S
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         M
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         T
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         W
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         T
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         F
+        </div>
+        <div class="text-center text-gray-500 font-medium py-1">
+         S
+        </div><!-- Calendar days will be populated by JavaScript -->
+        <div id="calendar-days" class="col-span-7 grid grid-cols-7 gap-1"></div>
+       </div>
+      </div>
+     </div><!-- Expense Impact -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-orange-400 mb-4">Expense Impact</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Base Expenses:</span> <span id="base-expenses-display" class="font-semibold">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">Added Expenses:</span> <span id="added-expenses-display" class="font-semibold text-orange-400">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">3x Multiplier:</span> <span id="expense-multiplier-display" class="font-semibold text-red-400">0</span>
+       </div>
+       <div class="text-xs text-gray-500 mt-2">
+        Total target increase: <span id="total-expense-impact" class="text-orange-400 font-semibold">0</span>
+       </div>
+      </div>
+     </div><!-- Rollover Impact -->
+     <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+      <h3 class="text-lg font-semibold text-red-400 mb-4">Rollover Penalty</h3>
+      <div class="space-y-3">
+       <div class="flex justify-between"><span class="text-gray-400">Previous Shortfalls:</span> <span id="rollover-shortfall-display" class="font-semibold text-red-300">0</span>
+       </div>
+       <div class="flex justify-between"><span class="text-gray-400">2x Penalty:</span> <span id="rollover-penalty-display" class="font-semibold text-red-400">0</span>
+       </div>
+       <div class="text-xs text-gray-500 mt-2">
+        💡 Missed targets from previous months are added at 2x to current month
+       </div>
+      </div>
+     </div>
+    </div><!-- Performance History -->
+    <div class="max-w-2xl mx-auto">
+     <h2 class="text-xl font-semibold mb-4 text-green-400">Recent Performance</h2>
+     <div id="performance-list" class="space-y-3">
+      <div class="text-center text-gray-500 py-8">
+       No performance data yet. Log your first result to see history.
+      </div>
+     </div>
+    </div>
+   </div><!-- Today's Target -->
+   <div class="max-w-md mx-auto mb-8">
+    <div id="target-card" class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-8 border border-gray-700 text-center glow">
+     <h2 class="text-lg text-gray-400 mb-2">Today's Target</h2>
+     <div id="daily-target" class="text-5xl font-bold text-green-400 mb-4">
+      0
+     </div>
+     <div id="target-info" class="text-sm text-gray-500">
+      Set your monthly goals to get started
+     </div>
+    </div>
+   </div><!-- Performance Entry -->
+   <div id="entry-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-green-400">Log Today's Performance</h2>
+    <div class="space-y-4">
+     <div><label for="actual-result" class="block text-sm font-medium mb-2">Actual Result</label> <input type="number" id="actual-result" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="0">
+     </div><button id="log-performance" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Log Performance </button>
+    </div>
+   </div><!-- Add Expense Section -->
+   <div id="expense-section" class="max-w-md mx-auto mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700" style="display: none;">
+    <h2 class="text-xl font-semibold mb-4 text-orange-400">Add Expense</h2>
+    <div class="space-y-4">
+     <div><label for="expense-amount" class="block text-sm font-medium mb-2">Expense Amount</label> <input type="number" id="expense-amount" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="0">
+     </div>
+     <div><label for="expense-description" class="block text-sm font-medium mb-2">Description (Optional)</label> <input type="text" id="expense-description" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent" placeholder="e.g., Office supplies, Software subscription">
+     </div>
+     <div class="bg-orange-900 bg-opacity-30 border border-orange-600 rounded-lg p-3">
+      <p class="text-sm text-orange-300">💡 <strong>Smart Adjustment:</strong> Adding this expense will increase your daily target by <span id="expense-multiplier">3x</span> the amount to ensure you earn enough to cover it.</p>
+     </div><button id="add-expense" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Add Expense </button>
+    </div>
+   </div><!-- Edit Modal -->
+   <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+    <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700">
+     <div class="flex justify-between items-center mb-4">
+      <h3 id="edit-modal-title" class="text-xl font-semibold text-green-400">Edit Entry</h3><button onclick="closeEditModal()" class="text-gray-400 hover:text-white text-2xl">×</button>
+     </div>
+     <div id="edit-modal-content"><!-- Content will be populated by JavaScript -->
+     </div>
+     <div class="flex space-x-3 mt-6"><button id="save-edit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Save Changes </button> <button onclick="closeEditModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"> Cancel </button>
+     </div>
+    </div>
+   </div><!-- Designer Credit -->
+   <footer class="text-center py-6 mt-8 border-t border-gray-700">
+    <p class="text-gray-400 text-sm">Designed by <span class="text-green-400 font-semibold">JAISAL BHATIA</span></p>
+   </footer>
+  </div>
+  <script>
+        let currentData = [];
+        let currentTarget = 0;
+        let monthlyGoal = 0;
+        let monthlyExpenses = 0;
+        let workingDays = 22;
+
+        const defaultConfig = {
+            app_title: "Smart Trading Targets"
+        };
+
+        // Local Storage Functions
+        function saveData() {
+            try {
+                localStorage.setItem('tradingTargetsData', JSON.stringify(currentData));
+            } catch (error) {
+                console.error('Failed to save data:', error);
+            }
+        }
+
+        function loadData() {
+            try {
+                const saved = localStorage.getItem('tradingTargetsData');
+                if (saved) {
+                    currentData = JSON.parse(saved);
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                currentData = [];
+            }
+        }
+
+        function addRecord(record) {
+            record.id = Date.now().toString(); // Simple ID generation
+            currentData.push(record);
+            saveData();
+            updateUI();
+        }
+
+        function updateRecord(id, updatedFields) {
+            const index = currentData.findIndex(entry => entry.id === id);
+            if (index !== -1) {
+                currentData[index] = { ...currentData[index], ...updatedFields };
+                saveData();
+                updateUI();
+            }
+        }
+
+        function deleteRecord(id) {
+            currentData = currentData.filter(entry => entry.id !== id);
+            saveData();
+            updateUI();
+        }
+
+        // Element SDK Configuration
+        const capabilities = {
+            recolorables: [
+                {
+                    get: () => window.elementSdk?.config?.background_color || defaultConfig.background_color || "#111827",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ background_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.surface_color || defaultConfig.surface_color || "#1f2937",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ surface_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.text_color || defaultConfig.text_color || "#ffffff",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ text_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.accent_color || defaultConfig.accent_color || "#22c55e",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ accent_color: value });
+                        }
+                    }
+                },
+                {
+                    get: () => window.elementSdk?.config?.secondary_color || defaultConfig.secondary_color || "#3b82f6",
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ secondary_color: value });
+                        }
+                    }
+                }
+            ],
+            borderables: [],
+            fontEditable: {
+                get: () => window.elementSdk?.config?.font_family || defaultConfig.font_family || "sans-serif",
+                set: (value) => {
+                    if (window.elementSdk) {
+                        window.elementSdk.setConfig({ font_family: value });
+                    }
+                }
+            },
+            fontSizeable: {
+                get: () => window.elementSdk?.config?.font_size || defaultConfig.font_size || 16,
+                set: (value) => {
+                    if (window.elementSdk) {
+                        window.elementSdk.setConfig({ font_size: value });
+                    }
+                }
+            }
+        };
+
+        async function onConfigChange(config) {
+            const backgroundColor = config.background_color || defaultConfig.background_color || "#111827";
+            const surfaceColor = config.surface_color || defaultConfig.surface_color || "#1f2937";
+            const textColor = config.text_color || defaultConfig.text_color || "#ffffff";
+            const accentColor = config.accent_color || defaultConfig.accent_color || "#22c55e";
+            const secondaryColor = config.secondary_color || defaultConfig.secondary_color || "#3b82f6";
+            const fontFamily = config.font_family || defaultConfig.font_family || "sans-serif";
+            const fontSize = config.font_size || defaultConfig.font_size || 16;
+
+            // Apply colors
+            document.body.style.backgroundColor = backgroundColor;
+            document.body.style.color = textColor;
+            document.body.style.fontFamily = `${fontFamily}, sans-serif`;
+            document.body.style.fontSize = `${fontSize}px`;
+
+            // Update surface colors
+            const surfaces = document.querySelectorAll('.bg-gray-800, .bg-gray-900');
+            surfaces.forEach(el => el.style.backgroundColor = surfaceColor);
+
+            // Update accent colors
+            const accents = document.querySelectorAll('.text-green-400, .border-green-500, .bg-green-600');
+            accents.forEach(el => {
+                if (el.classList.contains('text-green-400')) el.style.color = accentColor;
+                if (el.classList.contains('border-green-500')) el.style.borderColor = accentColor;
+                if (el.classList.contains('bg-green-600')) el.style.backgroundColor = accentColor;
+            });
+
+            // Update secondary colors
+            const secondaries = document.querySelectorAll('.bg-blue-600');
+            secondaries.forEach(el => el.style.backgroundColor = secondaryColor);
+
+            // Update text content
+            document.getElementById('app-title').textContent = config.app_title || defaultConfig.app_title;
+            
+            updateTargetDisplay();
+        }
+
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ["app_title", config.app_title || defaultConfig.app_title]
+            ]);
+        }
+
+        function calculateAutoDifficulty(actual, target) {
+            if (target <= 0) return 'moderate';
+            
+            const ratio = actual / target;
+            
+            if (ratio >= 1.5) return 'very-easy';      // 150%+ of target
+            if (ratio >= 1.2) return 'easy';          // 120-149% of target
+            if (ratio >= 0.8) return 'moderate';      // 80-119% of target
+            if (ratio >= 0.5) return 'hard';          // 50-79% of target
+            return 'very-hard';                       // <50% of target
+        }
+
+        function calculateRolloverAmount() {
+            // Calculate rollover from all previous months where targets were missed
+            let totalRollover = 0;
+            const today = new Date();
+            
+            // Get all unique months from the data
+            const monthsWithData = [...new Set(currentData.map(entry => {
+                const date = new Date(entry.date);
+                return `${date.getFullYear()}-${date.getMonth()}`;
+            }))];
+            
+            monthsWithData.forEach(monthKey => {
+                const [year, month] = monthKey.split('-').map(Number);
+                const monthDate = new Date(year, month);
+                
+                // Skip current month and future months
+                if (monthDate >= new Date(today.getFullYear(), today.getMonth())) return;
+                
+                // Get the goal for this month (from the latest setup entry in that month)
+                const monthSetup = currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year &&
+                               entry.monthly_goal > 0;
+                    })
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                
+                if (!monthSetup) return;
+                
+                // Calculate actual progress for that month
+                const monthProgress = currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year;
+                    })
+                    .reduce((sum, entry) => sum + entry.actual, 0);
+                
+                // Calculate total target including expenses for that month
+                const monthlyAdditionalExpenses = currentData
+                    .filter(entry => {
+                        if (!entry.expense_amount) return false;
+                        const entryDate = new Date(entry.expense_date || entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year;
+                    })
+                    .reduce((sum, entry) => sum + entry.expense_amount, 0);
+                
+                const totalMonthTarget = monthSetup.monthly_goal + monthSetup.monthly_expenses + (monthlyAdditionalExpenses * 3);
+                
+                // If target was missed, add 2x the shortfall to rollover
+                if (monthProgress < totalMonthTarget) {
+                    const shortfall = totalMonthTarget - monthProgress;
+                    totalRollover += shortfall * 2;
+                }
+            });
+            
+            return totalRollover;
+        }
+
+        function calculateDailyTarget() {
+            if (monthlyGoal <= 0 || workingDays <= 0) return 0;
+
+            const today = new Date();
+            
+            // Count actual days worked this month
+            const daysWorked = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual > 0;
+                })
+                .length;
+            
+            // Calculate working days remaining (simple subtraction from total working days)
+            const workingDaysRemaining = Math.max(0, workingDays - daysWorked);
+
+            if (workingDaysRemaining <= 0) return 0;
+
+            // Calculate progress so far
+            const monthlyProgress = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + entry.actual, 0);
+
+            // Add rollover from previous missed months (2x the shortfall)
+            const rolloverAmount = calculateRolloverAmount();
+            
+            // Calculate total losses for the month and add to goal
+            const monthlyLosses = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual < 0;
+                })
+                .reduce((sum, entry) => sum + Math.abs(entry.actual), 0);
+            
+            const adjustedMonthlyGoal = monthlyGoal + rolloverAmount + monthlyLosses;
+
+            // Calculate remaining target
+            const remainingTarget = Math.max(0, adjustedMonthlyGoal - monthlyProgress);
+
+            // Base daily target (spread across remaining working days)
+            let dailyTarget = remainingTarget / workingDaysRemaining;
+
+            // Adjust based on recent performance difficulty (auto-calculated)
+            const recentEntries = currentData
+                .filter(entry => new Date(entry.date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+                .slice(-5);
+
+            if (recentEntries.length > 0) {
+                const avgDifficulty = recentEntries.reduce((sum, entry) => {
+                    const difficultyScore = {
+                        'very-easy': 1,
+                        'easy': 2,
+                        'moderate': 3,
+                        'hard': 4,
+                        'very-hard': 5
+                    }[entry.difficulty] || 3;
+                    return sum + difficultyScore;
+                }, 0) / recentEntries.length;
+
+                // Adjust target based on difficulty
+                if (avgDifficulty < 2.5) {
+                    dailyTarget *= 1.2; // Increase if too easy
+                } else if (avgDifficulty > 3.5) {
+                    dailyTarget *= 0.8; // Decrease if too hard
+                }
+            }
+
+            // Factor in expenses (need to earn more to cover expenses, spread across working days)
+            const dailyExpenses = monthlyExpenses / workingDays;
+            dailyTarget = Math.max(dailyTarget, dailyExpenses * 1.1);
+
+            // Add 3x any additional expenses from this month (spread across working days)
+            const monthlyAdditionalExpenses = currentData
+                .filter(entry => {
+                    if (!entry.expense_amount) return false;
+                    const entryDate = new Date(entry.expense_date || entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + (entry.expense_amount * 3), 0);
+
+            const dailyAdditionalExpenses = monthlyAdditionalExpenses / workingDays;
+            dailyTarget += dailyAdditionalExpenses;
+
+            return Math.round(dailyTarget);
+        }
+
+        function updateTargetDisplay() {
+            document.getElementById('daily-target').textContent = currentTarget.toLocaleString();
+            
+            if (currentTarget > 0) {
+                document.getElementById('target-info').textContent = 'Automatically adjusted based on your performance';
+                document.getElementById('entry-section').style.display = 'block';
+                document.getElementById('tab-navigation').style.display = 'block';
+                updateProgressDashboard();
+            } else {
+                document.getElementById('target-info').textContent = 'Set your monthly goals to get started';
+                document.getElementById('entry-section').style.display = 'none';
+                document.getElementById('tab-navigation').style.display = 'none';
+            }
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            const homeTab = document.getElementById('home-tab');
+            const analyticsTab = document.getElementById('analytics-tab');
+            const homeContent = document.getElementById('home-content');
+            const analyticsContent = document.getElementById('analytics-content');
+
+            if (tabName === 'home') {
+                homeTab.className = 'flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors';
+                analyticsTab.className = 'flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors';
+                homeContent.style.display = 'block';
+                analyticsContent.style.display = 'none';
+            } else {
+                homeTab.className = 'flex-1 py-2 px-4 text-center rounded-md text-gray-400 hover:text-white font-medium transition-colors';
+                analyticsTab.className = 'flex-1 py-2 px-4 text-center rounded-md bg-green-600 text-white font-medium transition-colors';
+                homeContent.style.display = 'none';
+                analyticsContent.style.display = 'block';
+                
+                // Redraw chart when analytics tab is shown
+                setTimeout(() => {
+                    drawTargetTrendChart();
+                }, 100);
+            }
+        }
+
+        function updateCalendar() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            
+            // Set month header
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Get days with performance data
+            const performanceDays = new Set(
+                currentData
+                    .filter(entry => {
+                        const entryDate = new Date(entry.date);
+                        return entryDate.getMonth() === month && 
+                               entryDate.getFullYear() === year &&
+                               entry.actual > 0;
+                    })
+                    .map(entry => new Date(entry.date).getDate())
+            );
+            
+            // Build calendar
+            const calendarDays = document.getElementById('calendar-days');
+            calendarDays.innerHTML = '';
+            
+            // Add empty cells for days before month starts
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'h-6';
+                calendarDays.appendChild(emptyDay);
+            }
+            
+            // Add days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.textContent = day;
+                dayElement.className = 'h-6 flex items-center justify-center text-center rounded';
+                
+                // Highlight today
+                if (day === today.getDate()) {
+                    dayElement.className += ' bg-blue-500 text-white font-bold';
+                }
+                // Mark days with performance data
+                else if (performanceDays.has(day)) {
+                    dayElement.className += ' bg-green-600 text-white font-semibold';
+                }
+                // Past days without data
+                else if (day < today.getDate()) {
+                    dayElement.className += ' text-gray-500';
+                }
+                // Future days
+                else {
+                    dayElement.className += ' text-gray-300';
+                }
+                
+                calendarDays.appendChild(dayElement);
+            }
+        }
+
+        function drawTargetTrendChart() {
+            const canvas = document.getElementById('target-trend-chart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const tooltip = document.getElementById('chart-tooltip');
+            
+            // Force canvas dimensions first
+            canvas.style.width = '100%';
+            canvas.style.height = '300px';
+            
+            // Get actual dimensions after styling
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width || 800;
+            const height = rect.height || 300;
+            
+            // Set canvas size for high DPI displays
+            canvas.width = width * 2;
+            canvas.height = height * 2;
+            ctx.scale(2, 2);
+            
+            const padding = 60;
+            const chartWidth = width - padding * 2;
+            const chartHeight = height - padding * 2;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Get current month data
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Calculate daily targets for each day of the month
+            const dailyData = [];
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                // Get performance data up to this day
+                const dataUpToDay = currentData.filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate <= date && 
+                           entryDate.getMonth() === month && 
+                           entryDate.getFullYear() === year;
+                });
+                
+                // Calculate what the target would have been on this day
+                const target = calculateDailyTargetForDate(date, dataUpToDay);
+                
+                // Get actual performance for this day
+                const dayEntry = currentData.find(entry => entry.date === dateStr);
+                const actual = dayEntry ? dayEntry.actual : null;
+                
+                dailyData.push({
+                    day: day,
+                    date: dateStr,
+                    target: target,
+                    actual: actual,
+                    isToday: day === today.getDate(),
+                    isPast: day < today.getDate(),
+                    isFuture: day > today.getDate()
+                });
+            }
+            
+            // Find min and max values for scaling
+            const allValues = dailyData.flatMap(d => [d.target, d.actual].filter(v => v !== null && v !== undefined));
+            const minValue = Math.min(0, ...allValues);
+            const maxValue = Math.max(...allValues);
+            const valueRange = maxValue - minValue;
+            const scaledMin = minValue - valueRange * 0.1;
+            const scaledMax = maxValue + valueRange * 0.1;
+            const scaledRange = scaledMax - scaledMin;
+            
+            // Helper function to get Y coordinate
+            function getY(value) {
+                return padding + chartHeight - ((value - scaledMin) / scaledRange) * chartHeight;
+            }
+            
+            // Helper function to get X coordinate
+            function getX(day) {
+                return padding + ((day - 1) / (daysInMonth - 1)) * chartWidth;
+            }
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 5; i++) {
+                const value = scaledMin + (scaledRange * i / 5);
+                const y = getY(value);
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(padding + chartWidth, y);
+                ctx.stroke();
+                
+                // Y-axis labels
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(value).toLocaleString(), padding - 10, y + 3);
+            }
+            
+            // Vertical grid lines (every 5 days)
+            for (let day = 1; day <= daysInMonth; day += 5) {
+                const x = getX(day);
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, padding + chartHeight);
+                ctx.stroke();
+                
+                // X-axis labels
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(day.toString(), x, padding + chartHeight + 15);
+            }
+            
+            // Draw target line
+            ctx.strokeStyle = '#22C55E';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            let firstPoint = true;
+            dailyData.forEach((data, index) => {
+                if (data.target > 0) {
+                    const x = getX(data.day);
+                    const y = getY(data.target);
+                    
+                    if (firstPoint) {
+                        ctx.moveTo(x, y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+            });
+            ctx.stroke();
+            
+            // Draw actual performance points and lines
+            ctx.strokeStyle = '#3B82F6';
+            ctx.fillStyle = '#3B82F6';
+            ctx.lineWidth = 2;
+            
+            let actualPoints = dailyData.filter(d => d.actual !== null && d.actual !== undefined);
+            if (actualPoints.length > 1) {
+                ctx.beginPath();
+                actualPoints.forEach((data, index) => {
+                    const x = getX(data.day);
+                    const y = getY(data.actual);
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.stroke();
+            }
+            
+            // Draw actual performance points
+            actualPoints.forEach(data => {
+                const x = getX(data.day);
+                const y = getY(data.actual);
+                
+                // Color code based on performance vs target
+                if (data.actual < 0) {
+                    ctx.fillStyle = '#EF4444'; // Red for losses
+                } else if (data.actual >= data.target) {
+                    ctx.fillStyle = '#22C55E'; // Green for meeting target
+                } else {
+                    ctx.fillStyle = '#F59E0B'; // Yellow for partial achievement
+                }
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            
+            // Draw today indicator
+            const todayData = dailyData.find(d => d.isToday);
+            if (todayData) {
+                const x = getX(todayData.day);
+                ctx.strokeStyle = '#FBBF24';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, padding + chartHeight);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Today label
+                ctx.fillStyle = '#FBBF24';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('TODAY', x, padding - 10);
+            }
+            
+            // Add mouse interaction for tooltip
+            canvas.onmousemove = function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Find closest data point
+                let closestData = null;
+                let closestDistance = Infinity;
+                
+                dailyData.forEach(data => {
+                    const x = getX(data.day);
+                    const distance = Math.abs(mouseX - x);
+                    
+                    if (distance < closestDistance && distance < 20) {
+                        closestDistance = distance;
+                        closestData = data;
+                    }
+                });
+                
+                if (closestData) {
+                    const targetText = closestData.target > 0 ? closestData.target.toLocaleString() : 'No target';
+                    const actualText = closestData.actual !== null ? closestData.actual.toLocaleString() : 'No data';
+                    const dateText = new Date(closestData.date).toLocaleDateString();
+                    
+                    tooltip.innerHTML = `
+                        <div><strong>${dateText}</strong></div>
+                        <div>Target: ${targetText}</div>
+                        <div>Actual: ${actualText}</div>
+                    `;
+                    tooltip.style.left = (e.clientX + 10) + 'px';
+                    tooltip.style.top = (e.clientY - 10) + 'px';
+                    tooltip.style.opacity = '1';
+                } else {
+                    tooltip.style.opacity = '0';
+                }
+            };
+            
+            canvas.onmouseleave = function() {
+                tooltip.style.opacity = '0';
+            };
+        }
+        
+        function calculateDailyTargetForDate(targetDate, dataUpToDate) {
+            if (!dataUpToDate.length) return 0;
+            
+            // Get the latest setup data up to this date
+            const latestSetup = dataUpToDate
+                .filter(entry => entry.monthly_goal && entry.monthly_expenses)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            
+            if (!latestSetup) return 0;
+            
+            const monthlyGoalAtDate = latestSetup.monthly_goal;
+            const monthlyExpensesAtDate = latestSetup.monthly_expenses;
+            const workingDaysAtDate = latestSetup.working_days || 22;
+            
+            // Calculate progress up to this date
+            const progressUpToDate = dataUpToDate
+                .filter(entry => entry.actual !== undefined)
+                .reduce((sum, entry) => sum + entry.actual, 0);
+            
+            // Calculate losses up to this date
+            const lossesUpToDate = dataUpToDate
+                .filter(entry => entry.actual < 0)
+                .reduce((sum, entry) => sum + Math.abs(entry.actual), 0);
+            
+            // Calculate additional expenses up to this date
+            const additionalExpensesUpToDate = dataUpToDate
+                .filter(entry => entry.expense_amount)
+                .reduce((sum, entry) => sum + entry.expense_amount, 0);
+            
+            // Adjust monthly goal with losses
+            const adjustedGoal = monthlyGoalAtDate + lossesUpToDate;
+            
+            // Calculate remaining target
+            const remainingTarget = Math.max(0, adjustedGoal - progressUpToDate);
+            
+            // Calculate working days remaining from this date
+            const daysWorked = dataUpToDate
+                .filter(entry => entry.actual > 0)
+                .length;
+            
+            const workingDaysRemaining = Math.max(1, workingDaysAtDate - daysWorked);
+            
+            // Base daily target
+            let dailyTarget = remainingTarget / workingDaysRemaining;
+            
+            // Add expenses
+            const dailyExpenses = monthlyExpensesAtDate / workingDaysAtDate;
+            const dailyAdditionalExpenses = (additionalExpensesUpToDate * 3) / workingDaysAtDate;
+            
+            dailyTarget = Math.max(dailyTarget, dailyExpenses * 1.1);
+            dailyTarget += dailyAdditionalExpenses;
+            
+            return Math.round(dailyTarget);
+        }
+
+        function updateProgressDashboard() {
+            const today = new Date();
+            
+            // Calculate monthly progress (including losses)
+            const monthlyProgress = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual !== undefined;
+                })
+                .reduce((sum, entry) => sum + entry.actual, 0);
+
+            // Calculate total losses for the month
+            const monthlyLosses = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual < 0;
+                })
+                .reduce((sum, entry) => sum + Math.abs(entry.actual), 0);
+
+            const remainingTarget = Math.max(0, monthlyGoal - monthlyProgress);
+            const progressPercentage = monthlyGoal > 0 ? Math.min(100, (monthlyProgress / monthlyGoal) * 100) : 0;
+
+            // Calculate total monthly target (base goal + expenses + 3x additional expenses + rollover + losses)
+            const monthlyAdditionalExpenses = currentData
+                .filter(entry => {
+                    if (!entry.expense_amount) return false;
+                    const entryDate = new Date(entry.expense_date || entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear();
+                })
+                .reduce((sum, entry) => sum + entry.expense_amount, 0);
+
+            const rolloverAmount = calculateRolloverAmount();
+            const adjustedMonthlyGoal = monthlyGoal + monthlyLosses; // Add losses to base goal
+            const totalMonthlyTarget = adjustedMonthlyGoal + monthlyExpenses + (monthlyAdditionalExpenses * 3) + rolloverAmount;
+            const totalRemainingTarget = Math.max(0, totalMonthlyTarget - monthlyProgress);
+            const totalProgressPercentage = totalMonthlyTarget > 0 ? Math.min(100, (monthlyProgress / totalMonthlyTarget) * 100) : 0;
+
+            // Update monthly goal progress
+            const goalDisplayText = monthlyLosses > 0 
+                ? `${monthlyGoal.toLocaleString()} (+${monthlyLosses.toLocaleString()} losses)`
+                : monthlyGoal.toLocaleString();
+            document.getElementById('monthly-goal-display').textContent = goalDisplayText;
+            document.getElementById('monthly-target-display').textContent = totalMonthlyTarget.toLocaleString();
+            document.getElementById('monthly-achieved-display').textContent = monthlyProgress.toLocaleString();
+            document.getElementById('monthly-remaining-display').textContent = totalRemainingTarget.toLocaleString();
+            document.getElementById('progress-bar').style.width = `${totalProgressPercentage}%`;
+            document.getElementById('progress-percentage').textContent = `${Math.round(totalProgressPercentage)}% Complete`;
+
+            // Calculate working days remaining in current month
+            const currentDate = today.getDate();
+            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            
+            // Count weekdays (Mon-Fri) remaining from today until end of month
+            let workingDaysRemainingInMonth = 0;
+            for (let day = currentDate; day <= daysInMonth; day++) {
+                const checkDate = new Date(today.getFullYear(), today.getMonth(), day);
+                const dayOfWeek = checkDate.getDay();
+                // Count Monday (1) through Friday (5) as working days
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    workingDaysRemainingInMonth++;
+                }
+            }
+            
+            // Count actual days worked so far this month
+            const daysWorked = currentData
+                .filter(entry => {
+                    const entryDate = new Date(entry.date);
+                    return entryDate.getMonth() === today.getMonth() && 
+                           entryDate.getFullYear() === today.getFullYear() &&
+                           entry.actual > 0;
+                })
+                .length;
+            
+            // Calculate total weekdays in current month for progress bar
+            let totalWeekdaysInMonth = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const checkDate = new Date(today.getFullYear(), today.getMonth(), day);
+                const dayOfWeek = checkDate.getDay();
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    totalWeekdaysInMonth++;
+                }
+            }
+            
+            const weekdaysPassed = totalWeekdaysInMonth - workingDaysRemainingInMonth;
+            const daysProgressPercentage = totalWeekdaysInMonth > 0 ? (weekdaysPassed / totalWeekdaysInMonth) * 100 : 0;
+
+            document.getElementById('total-working-days').textContent = totalWeekdaysInMonth;
+            document.getElementById('days-remaining').textContent = workingDaysRemainingInMonth;
+            document.getElementById('days-progress-bar').style.width = `${daysProgressPercentage}%`;
+
+            // Update calendar
+            updateCalendar();
+
+            // Update the target trend chart
+            drawTargetTrendChart();
+
+            // Calculate expense impact (reuse the monthlyAdditionalExpenses from above)
+            const expenseMultiplier = monthlyAdditionalExpenses * 3;
+            const totalExpenseImpact = monthlyExpenses + expenseMultiplier;
+
+            document.getElementById('base-expenses-display').textContent = monthlyExpenses.toLocaleString();
+            document.getElementById('added-expenses-display').textContent = monthlyAdditionalExpenses.toLocaleString();
+            document.getElementById('expense-multiplier-display').textContent = expenseMultiplier.toLocaleString();
+            document.getElementById('total-expense-impact').textContent = totalExpenseImpact.toLocaleString();
+
+            // Calculate and display rollover impact
+            const rolloverShortfall = rolloverAmount / 2; // Original shortfall before 2x penalty
+            document.getElementById('rollover-shortfall-display').textContent = rolloverShortfall.toLocaleString();
+            document.getElementById('rollover-penalty-display').textContent = rolloverAmount.toLocaleString();
+        }
+
+        function updateUI() {
+            // Get latest setup from data
+            const latestSetup = currentData
+                .filter(entry => entry.monthly_goal && entry.monthly_expenses)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+
+            if (latestSetup) {
+                monthlyGoal = latestSetup.monthly_goal;
+                monthlyExpenses = latestSetup.monthly_expenses;
+                workingDays = latestSetup.working_days || 22;
+                document.getElementById('monthly-goal').value = monthlyGoal;
+                document.getElementById('monthly-expenses').value = monthlyExpenses;
+                document.getElementById('working-days').value = workingDays;
+            }
+
+            currentTarget = calculateDailyTarget();
+            updateTargetDisplay();
+            updatePerformanceList();
+        }
+
+        function updatePerformanceList() {
+            const container = document.getElementById('performance-list');
+            
+            if (currentData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">No performance data yet. Log your first result to see history.</div>';
+                return;
+            }
+
+            const recentEntries = currentData
+                .filter(entry => entry.actual !== undefined || entry.expense_amount !== undefined)
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 10);
+
+            container.innerHTML = recentEntries.map(entry => {
+                const date = new Date(entry.date).toLocaleDateString();
+                
+                // Check if this is an expense entry
+                if (entry.expense_amount) {
+                    return `
+                        <div class="bg-gray-800 rounded-lg p-4 border border-orange-600" data-entry-id="${entry.id}">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-400">${date}</span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm text-orange-400">💸 Expense Added</span>
+                                    <button onclick="editExpense('${entry.id}')" class="text-xs text-blue-400 hover:text-blue-300 underline">Edit</button>
+                                    <button onclick="deleteEntry('${entry.id}')" class="text-xs text-red-400 hover:text-red-300 underline">Delete</button>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <span class="text-lg font-semibold text-orange-400">-${entry.expense_amount.toLocaleString()}</span>
+                                    <span class="text-gray-400"> (3x = +${(entry.expense_amount * 3).toLocaleString()} to targets)</span>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-400 mt-1">${entry.expense_description}</div>
+                        </div>
+                    `;
+                }
+                
+                // Regular performance entry
+                const targetMet = entry.actual >= entry.target;
+                const difficultyColor = {
+                    'very-easy': 'text-green-300',
+                    'easy': 'text-green-400',
+                    'moderate': 'text-yellow-400',
+                    'hard': 'text-orange-400',
+                    'very-hard': 'text-red-400'
+                }[entry.difficulty] || 'text-gray-400';
+
+                return `
+                    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700" data-entry-id="${entry.id}">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-400">${date}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm ${targetMet ? 'text-green-400' : 'text-red-400'}">
+                                    ${targetMet ? '✓ Target Met' : '✗ Target Missed'}
+                                </span>
+                                <button onclick="editPerformance('${entry.id}')" class="text-xs text-blue-400 hover:text-blue-300 underline">Edit</button>
+                                <button onclick="deleteEntry('${entry.id}')" class="text-xs text-red-400 hover:text-red-300 underline">Delete</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-lg font-semibold">${entry.actual.toLocaleString()}</span>
+                                <span class="text-gray-400"> / ${entry.target.toLocaleString()}</span>
+                            </div>
+                            <span class="text-sm ${difficultyColor} capitalize">
+                                ${entry.difficulty.replace('-', ' ')}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+
+
+        // Event Listeners
+        document.getElementById('home-tab').addEventListener('click', () => switchTab('home'));
+        document.getElementById('analytics-tab').addEventListener('click', () => switchTab('analytics'));
+
+        document.getElementById('setup-toggle').addEventListener('click', () => {
+            const setupSection = document.getElementById('setup-section');
+            if (setupSection.style.display === 'none') {
+                setupSection.style.display = 'block';
+            } else {
+                setupSection.style.display = 'none';
+            }
+        });
+
+        document.getElementById('expense-toggle').addEventListener('click', () => {
+            const expenseSection = document.getElementById('expense-section');
+            if (expenseSection.style.display === 'none') {
+                expenseSection.style.display = 'block';
+            } else {
+                expenseSection.style.display = 'none';
+            }
+        });
+
+        document.getElementById('update-setup').addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // Show loading state
+            const button = document.getElementById('update-setup');
+            const originalText = button.textContent;
+            button.textContent = 'Updating...';
+            button.disabled = true;
+            
+            // Remove any existing feedback first
+            const existingFeedback = document.querySelector('.feedback-message');
+            if (existingFeedback) existingFeedback.remove();
+            
+            const goalInput = document.getElementById('monthly-goal');
+            const expensesInput = document.getElementById('monthly-expenses');
+            const daysInput = document.getElementById('working-days');
+            
+            const goal = parseFloat(goalInput.value);
+            const expenses = parseFloat(expensesInput.value);
+            const days = parseInt(daysInput.value);
+
+            // Validation
+            if (isNaN(goal) || goal <= 0) {
+                showFeedback(button, 'Please enter a valid monthly goal (greater than 0)', 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+                return;
+            }
+
+            if (isNaN(expenses) || expenses < 0) {
+                showFeedback(button, 'Please enter valid monthly expenses (0 or greater)', 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+                return;
+            }
+
+            if (isNaN(days) || days <= 0 || days > 31) {
+                showFeedback(button, 'Please enter valid working days (1-31)', 'error');
+                button.textContent = originalText;
+                button.disabled = false;
+                return;
+            }
+
+            try {
+                const setupData = {
+                    date: new Date().toISOString().split('T')[0],
+                    target: 0,
+                    actual: 0,
+                    difficulty: 'moderate',
+                    monthly_goal: goal,
+                    monthly_expenses: expenses,
+                    working_days: days,
+                    created_at: new Date().toISOString()
+                };
+
+                addRecord(setupData);
+                
+                // Update local variables immediately
+                monthlyGoal = goal;
+                monthlyExpenses = expenses;
+                workingDays = days;
+                
+                // Recalculate and update target immediately
+                currentTarget = calculateDailyTarget();
+                updateTargetDisplay();
+                
+                showFeedback(button, 'Goals updated successfully! Your daily target has been recalculated.', 'success');
+                
+                // Hide setup section after successful update
+                setTimeout(() => {
+                    document.getElementById('setup-section').style.display = 'none';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Setup update error:', error);
+                showFeedback(button, 'Something went wrong. Please try again.', 'error');
+            }
+            
+            // Reset button state
+            button.textContent = originalText;
+            button.disabled = false;
+        });
+
+        function showFeedback(button, message, type) {
+            const feedback = document.createElement('div');
+            feedback.className = `feedback-message mt-2 p-2 rounded text-sm ${
+                type === 'success' 
+                    ? 'bg-green-900 bg-opacity-30 border border-green-600 text-green-300' 
+                    : 'bg-red-900 bg-opacity-30 border border-red-600 text-red-300'
+            }`;
+            feedback.textContent = message;
+            button.parentNode.insertBefore(feedback, button.nextSibling);
+            
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.remove();
+                }
+            }, 4000);
+        }
+
+        document.getElementById('log-performance').addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const actual = parseFloat(document.getElementById('actual-result').value);
+
+            if (isNaN(actual)) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Please enter a valid result amount';
+                document.getElementById('log-performance').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            // Auto-calculate difficulty based on performance vs target
+            const difficulty = calculateAutoDifficulty(actual, currentTarget);
+
+            const performanceData = {
+                date: new Date().toISOString().split('T')[0],
+                target: currentTarget,
+                actual: actual,
+                difficulty: difficulty,
+                monthly_goal: monthlyGoal,
+                monthly_expenses: monthlyExpenses,
+                working_days: workingDays,
+                created_at: new Date().toISOString()
+            };
+
+            addRecord(performanceData);
+            
+            document.getElementById('actual-result').value = '';
+            
+            // Show feedback about auto-calculated difficulty
+            const difficultyLabels = {
+                'very-easy': 'Very Easy (150%+ of target)',
+                'easy': 'Easy (120-149% of target)',
+                'moderate': 'Moderate (80-119% of target)',
+                'hard': 'Hard (50-79% of target)',
+                'very-hard': 'Very Hard (<50% of target)'
+            };
+            
+            const feedbackMessage = `Performance logged! Difficulty automatically assessed as: ${difficultyLabels[difficulty]}`;
+            
+            // Create temporary feedback message
+            const feedback = document.createElement('div');
+            feedback.className = 'mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm text-green-300';
+            feedback.textContent = feedbackMessage;
+            document.getElementById('entry-section').appendChild(feedback);
+            
+            // Remove feedback after 3 seconds
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.parentNode.removeChild(feedback);
+                }
+            }, 3000);
+        });
+
+        document.getElementById('add-expense').addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            const expenseAmount = parseFloat(document.getElementById('expense-amount').value);
+            const expenseDescription = document.getElementById('expense-description').value.trim();
+
+            if (isNaN(expenseAmount) || expenseAmount <= 0) {
+                const feedback = document.createElement('div');
+                feedback.className = 'mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                feedback.textContent = 'Please enter a valid expense amount';
+                document.getElementById('add-expense').parentNode.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+                return;
+            }
+
+            const expenseData = {
+                date: new Date().toISOString().split('T')[0],
+                target: 0,
+                actual: 0,
+                difficulty: 'moderate',
+                monthly_goal: monthlyGoal,
+                monthly_expenses: monthlyExpenses,
+                working_days: workingDays,
+                expense_amount: expenseAmount,
+                expense_description: expenseDescription || 'Expense',
+                expense_date: new Date().toISOString().split('T')[0],
+                created_at: new Date().toISOString()
+            };
+
+            addRecord(expenseData);
+            
+            document.getElementById('expense-amount').value = '';
+            document.getElementById('expense-description').value = '';
+            
+            // Show confirmation with impact
+            const impact = expenseAmount * 3;
+            const feedback = document.createElement('div');
+            feedback.className = 'mt-2 p-2 bg-green-900 bg-opacity-30 border border-green-600 rounded text-sm text-green-300';
+            feedback.textContent = `Expense added! Your daily targets will now increase by ${impact.toLocaleString()} to cover this expense.`;
+            document.getElementById('add-expense').parentNode.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 3000);
+        });
+
+        // Edit Modal Functions
+        let currentEditId = null;
+        let currentEditType = null;
+
+        function editPerformance(id) {
+            const entry = currentData.find(e => e.id === id);
+            if (!entry) return;
+
+            currentEditId = id;
+            currentEditType = 'performance';
+
+            document.getElementById('edit-modal-title').textContent = 'Edit Performance';
+            document.getElementById('edit-modal-content').innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Date</label>
+                        <input type="date" id="edit-date" value="${entry.date}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Actual Result</label>
+                        <input type="number" id="edit-actual" value="${entry.actual}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Target (was ${entry.target.toLocaleString()})</label>
+                        <input type="number" id="edit-target" value="${entry.target}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function editExpense(id) {
+            const entry = currentData.find(e => e.id === id);
+            if (!entry) return;
+
+            currentEditId = id;
+            currentEditType = 'expense';
+
+            document.getElementById('edit-modal-title').textContent = 'Edit Expense';
+            document.getElementById('edit-modal-content').innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Date</label>
+                        <input type="date" id="edit-expense-date" value="${entry.expense_date || entry.date}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Expense Amount</label>
+                        <input type="number" id="edit-expense-amount" value="${entry.expense_amount}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Description</label>
+                        <input type="text" id="edit-expense-description" value="${entry.expense_description || ''}" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function deleteEntry(id) {
+            const entry = currentData.find(e => e.id === id);
+            if (!entry) return;
+
+            const entryType = entry.expense_amount ? 'expense' : 'performance';
+            const entryDescription = entry.expense_amount 
+                ? `expense of ${entry.expense_amount.toLocaleString()}` 
+                : `performance result of ${entry.actual.toLocaleString()}`;
+
+            // Create inline confirmation
+            const entryElement = document.querySelector(`[data-entry-id="${id}"]`);
+            if (entryElement) {
+                const originalContent = entryElement.innerHTML;
+                entryElement.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-red-400 mb-3">Delete this ${entryDescription}?</p>
+                        <div class="space-x-3">
+                            <button onclick="confirmDelete('${id}')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm">
+                                Yes, Delete
+                            </button>
+                            <button onclick="cancelDelete('${id}', \`${originalContent.replace(/`/g, '\\`')}\`)" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function confirmDelete(id) {
+            deleteRecord(id);
+            
+            // Show success message
+            const feedback = document.createElement('div');
+            feedback.className = 'fixed top-4 right-4 bg-green-900 bg-opacity-90 border border-green-600 text-green-300 px-4 py-2 rounded-lg z-50';
+            feedback.textContent = 'Entry deleted successfully';
+            document.body.appendChild(feedback);
+            setTimeout(() => feedback.remove(), 3000);
+        }
+
+        function cancelDelete(id, originalContent) {
+            const entryElement = document.querySelector(`[data-entry-id="${id}"]`);
+            if (entryElement) {
+                entryElement.innerHTML = originalContent;
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEditId = null;
+            currentEditType = null;
+        }
+
+        function saveEdit() {
+            if (!currentEditId || !currentEditType) return;
+
+            const button = document.getElementById('save-edit');
+            button.textContent = 'Saving...';
+            button.disabled = true;
+
+            try {
+                if (currentEditType === 'performance') {
+                    const date = document.getElementById('edit-date').value;
+                    const actual = parseFloat(document.getElementById('edit-actual').value);
+                    const target = parseFloat(document.getElementById('edit-target').value);
+
+                    if (!date || isNaN(actual) || isNaN(target)) {
+                        throw new Error('Please fill in all fields with valid values');
+                    }
+
+                    // Recalculate difficulty based on new values
+                    const difficulty = calculateAutoDifficulty(actual, target);
+
+                    updateRecord(currentEditId, {
+                        date: date,
+                        actual: actual,
+                        target: target,
+                        difficulty: difficulty
+                    });
+
+                } else if (currentEditType === 'expense') {
+                    const expenseDate = document.getElementById('edit-expense-date').value;
+                    const expenseAmount = parseFloat(document.getElementById('edit-expense-amount').value);
+                    const expenseDescription = document.getElementById('edit-expense-description').value.trim();
+
+                    if (!expenseDate || isNaN(expenseAmount) || expenseAmount <= 0) {
+                        throw new Error('Please enter a valid date and expense amount');
+                    }
+
+                    updateRecord(currentEditId, {
+                        expense_date: expenseDate,
+                        expense_amount: expenseAmount,
+                        expense_description: expenseDescription || 'Expense'
+                    });
+                }
+
+                closeEditModal();
+                
+                // Show success message
+                const feedback = document.createElement('div');
+                feedback.className = 'fixed top-4 right-4 bg-green-900 bg-opacity-90 border border-green-600 text-green-300 px-4 py-2 rounded-lg z-50';
+                feedback.textContent = 'Entry updated successfully';
+                document.body.appendChild(feedback);
+                setTimeout(() => feedback.remove(), 3000);
+
+            } catch (error) {
+                // Show error message
+                const existingError = document.querySelector('.edit-error');
+                if (existingError) existingError.remove();
+
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'edit-error mt-2 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded text-sm text-red-300';
+                errorDiv.textContent = error.message;
+                document.getElementById('edit-modal-content').appendChild(errorDiv);
+            }
+
+            button.textContent = 'Save Changes';
+            button.disabled = false;
+        }
+
+        // Initialize
+        function init() {
+            // Load data from localStorage
+            loadData();
+            
+            // Initialize Element SDK
+            if (window.elementSdk) {
+                window.elementSdk.init({
+                    defaultConfig,
+                    onConfigChange,
+                    mapToCapabilities: () => capabilities,
+                    mapToEditPanelValues
+                });
+            }
+            
+            // Draw initial chart with proper timing
+            setTimeout(() => {
+                drawTargetTrendChart();
+            }, 500);
+            
+            // Redraw chart when window resizes
+            window.addEventListener('resize', () => {
+                setTimeout(drawTargetTrendChart, 100);
+            });
+        }
+
+        // Wait for page to load before initializing
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                init();
+                // Add event listener for save edit button
+                document.getElementById('save-edit').addEventListener('click', saveEdit);
+            });
+        } else {
+            init();
+            // Add event listener for save edit button
+            document.getElementById('save-edit').addEventListener('click', saveEdit);
+        }
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a018945e1ab7fec',t:'MTc2MzQwNjcxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
